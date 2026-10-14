@@ -13,13 +13,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-#
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+import os
 
 
 # -- General configuration ------------------------------------------------
@@ -75,7 +69,7 @@ language = 'en'
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '_extra']
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
@@ -116,6 +110,29 @@ html_favicon = 'favicon.ico'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+_srcdir = os.path.dirname(os.path.abspath(__file__))
+_extra_dir = os.path.join(_srcdir, '_extra')
+
+_api_source = os.environ.get('LIBFLATPAK_API_DIR')
+if _api_source and os.path.isdir(_api_source):
+    os.makedirs(_extra_dir, exist_ok=True)
+    _api_link = os.path.join(_extra_dir, 'libflatpak-api')
+    if not os.path.exists(_api_link):
+        os.symlink(os.path.abspath(_api_source), _api_link)
+
+for _env, _name in [
+    ('FLATPAK_DOCS_HTML', 'flatpak-docs.html'),
+    ('FLATPAK_BUILDER_DOCS_HTML', 'flatpak-builder-docs.html'),
+]:
+    _source = os.environ.get(_env)
+    if _source and os.path.isfile(_source):
+        _link = os.path.join(_srcdir, _name)
+        if not os.path.exists(_link):
+            os.symlink(os.path.abspath(_source), _link)
+
+if os.path.isdir(_extra_dir):
+    html_extra_path = ['_extra']
 
 
 # -- Options for HTMLHelp output ------------------------------------------

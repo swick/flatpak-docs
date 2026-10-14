@@ -7,6 +7,10 @@ on:
   pull_request:
     types: [opened, edited, reopened, synchronize, ready_for_review]
 
+env:
+  FLATPAK_BRANCH: flatpak-1.18.x
+  FLATPAK_BUILDER_BRANCH: flatpak-builder-1.4.x
+
 permissions:
   contents: read
 
@@ -23,7 +27,6 @@ jobs:
       # 6.3.0
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
-          # Same as RTD workflow
           python-version: '3.11'
           cache: 'pip'
           cache-dependency-path: '**/requirements*.txt'
@@ -33,20 +36,59 @@ jobs:
           python3 -m pip install -U pip
           pip install -U -r requirements.txt
 
+      - name: Download flatpak docs from CI
+        run: |
+          gh run download --repo ${{ github.repository_owner }}/flatpak --workflow check.yml --branch "$FLATPAK_BRANCH" --name docs --dir flatpak-artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download flatpak-builder docs from CI
+        run: |
+          gh run download --repo ${{ github.repository_owner }}/flatpak-builder --workflow check.yml --branch "$FLATPAK_BUILDER_BRANCH" --name docs --dir flatpak-builder-artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Sphinx build
         run: |
           echo "::add-matcher::.github/matchers/sphinx.json"
-          make -C docs/ html SPHINXOPTS="${SPHINXOPTS}"
+          make -C docs/ html \
+            SPHINXOPTS="${SPHINXOPTS}" \
+            FLATPAK_DOCS_HTML=${{ github.workspace }}/flatpak-artifact/doc/flatpak-docs.html \
+            LIBFLATPAK_API_DIR=${{ github.workspace }}/flatpak-artifact/doc/reference/Flatpak-1.0 \
+            FLATPAK_BUILDER_DOCS_HTML=${{ github.workspace }}/flatpak-builder-artifact/flatpak-builder-docs.html
           echo "::remove-matcher owner=sphinx::"
         env:
           SPHINXOPTS: -n -W -a --keep-going
 
+      - name: Upload pages artifact
+        if: github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_build/html
+
       - name: Upload docs as artifacts
+        if: github.event_name == 'pull_request'
         # 7.0.1
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: Documentation
           path: docs/_build/**/html
+
+  deploy:
+    name: Deploy to GitHub Pages
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
 
   linkcheck:
     name: Linkcheck
@@ -70,9 +112,25 @@ jobs:
           python3 -m pip install -U pip
           pip install -U -r requirements.txt
 
+      - name: Download flatpak docs from CI
+        run: |
+          gh run download --repo ${{ github.repository_owner }}/flatpak --workflow check.yml --branch "$FLATPAK_BRANCH" --name docs --dir flatpak-artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download flatpak-builder docs from CI
+        run: |
+          gh run download --repo ${{ github.repository_owner }}/flatpak-builder --workflow check.yml --branch "$FLATPAK_BUILDER_BRANCH" --name docs --dir flatpak-builder-artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Sphinx linkcheck
         run: |
-          make -C docs/ linkcheck SPHINXOPTS="${SPHINXOPTS}"
+          make -C docs/ linkcheck \
+            SPHINXOPTS="${SPHINXOPTS}" \
+            FLATPAK_DOCS_HTML=${{ github.workspace }}/flatpak-artifact/doc/flatpak-docs.html \
+            LIBFLATPAK_API_DIR=${{ github.workspace }}/flatpak-artifact/doc/reference/Flatpak-1.0 \
+            FLATPAK_BUILDER_DOCS_HTML=${{ github.workspace }}/flatpak-builder-artifact/flatpak-builder-docs.html
         env:
           SPHINXOPTS: -n -W -a --keep-going
 

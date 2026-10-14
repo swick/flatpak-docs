@@ -1,1 +1,4 @@
 _build/
+_extra/
+flatpak-docs.html
+flatpak-builder-docs.html

@@ -8,6 +8,14 @@ SPHINXPROJ    = Flatpak
 SOURCEDIR     = .
 BUILDDIR      = _build
 
+FLATPAK_DOCS_HTML ?= /usr/share/doc/flatpak/flatpak-docs.html
+FLATPAK_BUILDER_DOCS_HTML ?= /usr/share/doc/flatpak-builder/flatpak-builder-docs.html
+LIBFLATPAK_API_DIR ?= /usr/share/doc/Flatpak-1.0
+
+export FLATPAK_DOCS_HTML
+export FLATPAK_BUILDER_DOCS_HTML
+export LIBFLATPAK_API_DIR
+
 ifeq ($(shell command -v $(SPHINXBUILD) 2> /dev/null),)
 SPHINXBUILD := sphinx-build-3
 endif
